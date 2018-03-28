@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+    crossorigin="anonymous"></script>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="https://d3js.org/topojson.v2.min.js"></script>
+  <style>
+    .states {
+      fill: #dadada;
+    }
+
+    .state-borders {
+      fill: none;
+      stroke: #fff;
+      stroke-width: 0.5px;
+      stroke-linejoin: round;
+      stroke-linecap: round;
+      pointer-events: none;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    @media (min-width: 1200px) {
+      .container {
+        max-width: 1400px;
+      }
+    }
+
+    /* Us map popup */
+
+    #us-map-popup {
+      border: 1px solid #d1d1d1;
+      padding: 10px;
+    }
+
+    #us-map-popup h1 {
+      font-size: 20px;
+      margin: 0;
+    }
+
+    #us-map-popup p.description {
+      font-size: 16px;
+      line-height: 16px;
+    }
+
+    #us-map-popup h2 {
+      font-size: 16px;
+      margin: 0;
+    }
+
+    #us-map-popup .list-data {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    #us-map-popup .list-data li {
+      border: 1px solid #d1d1d1;
+      padding: 5px;
+      margin: 5px;
+      font-size: 14px;
+      width: 80px;
+      line-height: 16px;
+    }
+
+    #us-map-popup .list-data li span {
+      display: block;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app" class="container">
+    <div class="row">
+      <div class="col-lg-9">
+        <div id="us-map">
+        </div>
+      </div>
+      <div class="col-lg-3">
+        <div id="us-map-popup" class="hidden">
+          <h1 class="state">Maryland</h1>
+          <p class="description">
+            <br /> Jim Simpson
+            <br /> District Coordinator
+            <br /> jim@district.gov
+            <br /> +1 202 555 2323
+          </p>
+          <h2>Courts by Type</h2>
+          <ul class="list-data">
+            <li>
+              <span class="count">23</span>
+              <span class="title">Adult</span>
+            </li>
+            <li>
+              <span class="count">23</span>
+              <span class="title">Adult</span>
+            </li>
+            <li>
+              <span class="count">23</span>
+              <span class="title">Adult</span>
+            </li>
+            <li>
+              <span class="count">23</span>
+              <span class="title">Adult</span>
+            </li>
+            <li>
+              <span class="count">23</span>
+              <span class="title">Adult</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <script>
+    var stateNames = { "1": "Alabama", "2": "Alaska", "4": "Arizona", "5": "Arkansas", "6": "California", "8": "Colorado", "9": "Connecticut", "10": "Delaware", "11": "District of Columbia", "12": "Florida", "13": "Georgia", "15": "Hawaii", "16": "Idaho", "17": "Illinois", "18": "Indiana", "19": "Iowa", "20": "Kansas", "21": "Kentucky", "22": "Louisiana", "23": "Maine", "24": "Maryland", "25": "Massachusetts", "26": "Michigan", "27": "Minnesota", "28": "Mississippi", "29": "Missouri", "30": "Montana", "31": "Nebraska", "32": "Nevada", "33": "New Hampshire", "34": "New Jersey", "35": "New Mexico", "36": "New York", "37": "North Carolina", "38": "North Dakota", "39": "Ohio", "40": "Oklahoma", "41": "Oregon", "42": "Pennsylvania", "44": "Rhode Island", "45": "South Carolina", "46": "South Dakota", "47": "Tennessee", "48": "Texas", "49": "Utah", "50": "Vermont", "51": "Virginia", "53": "Washington", "54": "West Virginia", "55": "Wisconsin", "56": "Wyoming", "60": "American Samoa", "66": "Guam", "69": "Northern Mariana Islands", "72": "Puerto Rico", "74": "U.S. Minor Outlying Islands", "78": "U.S. Virgin Islands" };
+
+    var width = 960;
+    var height = 600;
+    const svg = d3.select('#us-map')
+      .append('svg')
+      .attr('id', 'chart')
+      .attr('viewBox', '0 0 960 600')
+
+    const description = svg.append('g')
+      .attr('class', 'description')
+      .attr('transform', 'translate(800, 420)')
+
+
+    var path = d3.geoPath();
+
+    //load map data
+    $.getJSON('us-10m.v1.json', function (us) {
+
+      // load names 
+      d3.json("api_response.json", function (data) {
+        svg.append("g")
+          .attr("class", "states")
+          .selectAll("path")
+          .data(topojson.feature(us, us.objects.states).features)
+          .enter().append("path")
+          .attr("d", path)
+          .on('mouseover', function (d) {
+            var id = +d.id
+            var state = stateNames[id]
+            var colorObj = data.color_code[state]
+            if (colorObj) {
+              d3.select(this).attr('fill', colorObj.color).attr('cursor', 'pointer')
+              renderDescription(data, state, colorObj.color)
+            }
+          })
+          .on('mouseout', function (d) {
+            d3.select(this).attr('fill', '#dadada').attr('cursor', 'default')
+            $('#us-map-popup').addClass('hidden')
+          })
+
+        svg.append("path")
+          .attr("class", "state-borders")
+          .attr("d", path(topojson.mesh(us, us.objects.states, function (a, b) { return a !== b; })));
+
+      })
+    });
+
+    function renderDescription(data, state, color) {
+      var coordinators = data.coordinators[state]
+      var counts = data.counts[state]
+
+      if (coordinators) {
+        $('#us-map-popup').removeClass('hidden')
+        $('#us-map-popup h1').html(state)
+        $('#us-map-popup .description').html(
+          coordinators.first_name + ' ' + coordinators.last_name + '<br />' +
+          coordinators.title + '<br />' +
+          coordinators.email + '<br />' +
+          coordinators.phone
+        )
+      }
+
+      var lists = ''
+      if (counts) {
+        for (key in counts) {
+          lists += ('<li><span>' + key + '</span>' + '<span>' + counts[key] + '</span></li>')
+        }
+        $('#us-map-popup .list-data').html(lists)
+      }
+
+    }
+  </script>
+</body>
